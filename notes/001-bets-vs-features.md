@@ -1,0 +1,1 @@
+Why is “build a momentum strategy” weaker product thinking than “test whether recent price momentum contains useful predictive information?”
