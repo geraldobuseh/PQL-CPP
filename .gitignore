@@ -1,0 +1,38 @@
+# CMake
+build/
+CMakeFiles/
+CMakeCache.txt
+CMakeUserPresets.json
+cmake_install.cmake
+Makefile
+
+# Visual Studio / MSVC
+.vs/
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.obj
+*.exe
+*.pdb
+
+# IDEs
+.vscode/settings.json
+.clion/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.gitkeep
+
+# Build outputs
+*.a
+*.lib
+*.so
+*.dll
+*.dylib
+
+# Testing
+.gtest/
