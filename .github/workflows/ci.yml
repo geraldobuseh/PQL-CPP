@@ -2,39 +2,52 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
-        os: [ windows-latest, ubuntu-latest ]
         include:
           - os: windows-latest
-            generator: "Visual Studio 17 2022"
+            generator: Ninja
             sanitizers: OFF
+
           - os: ubuntu-latest
-            generator: "Unix Makefiles"
+            generator: Ninja
             sanitizers: ON
 
     runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Configure CMake
-      run: cmake -S . -B build -G "${{ matrix.generator }}" -DCMAKE_BUILD_TYPE=Debug -DPQL_ENABLE_SANITIZERS=${{ matrix.sanitizers }}
+      - name: Configure CMake
+        run: >
+          cmake
+          -S .
+          -B build
+          -G "${{ matrix.generator }}"
+          -DCMAKE_BUILD_TYPE=Debug
+          -DPQL_ENABLE_SANITIZERS=${{ matrix.sanitizers }}
 
-    - name: Build
-      run: cmake --build build --config Debug
+      - name: Build
+        run: cmake --build build
 
-    - name: Run tests
-      run: ctest --test-dir build --verbose --build-config Debug
+      - name: Run tests
+        run: ctest --test-dir build --output-on-failure
 
-    - name: Check code format (Linux only)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        sudo apt-get update && sudo apt-get install -y clang-format
-        find src test -name "*.cpp" -o -name "*.h" | xargs clang-format --dry-run --Werror
+      - name: Check code format
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
+          find src test \
+            \( -name "*.cpp" -o -name "*.h" -o -name "*.hpp" \) \
+            -print0 \
+            | xargs -0 clang-format --dry-run --Werror
