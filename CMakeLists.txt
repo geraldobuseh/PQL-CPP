@@ -12,6 +12,21 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Sanitizers Configuration
+option(PQL_ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" ON)
+
+if(PQL_ENABLE_SANITIZERS)
+    if(MSVC)
+        # MSVC: AddressSanitizer support (limited)
+        add_compile_options(/fsanitize=address)
+        add_link_options(/fsanitize=address)
+    else()
+        # GCC/Clang: Full sanitizer suite
+        add_compile_options(-fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer)
+        add_link_options(-fsanitize=address -fsanitize=undefined)
+    endif()
+endif()
+
 # Compiler Flags for Clean Build
 if(MSVC)
     # MSVC: Enable /W4 warnings, treat warnings as errors
