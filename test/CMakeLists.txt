@@ -30,3 +30,19 @@ endif()
 
 # Register test with CTest
 add_test(NAME SmokeTest COMMAND pql_tests)
+
+add_executable(pql_domain_tests test_financial_types.cpp)
+target_link_libraries(pql_domain_tests PRIVATE pql_domain gtest_main)
+add_test(NAME FinancialTypesTest COMMAND pql_domain_tests)
+
+add_executable(pql_order_trade_tests test_order_trade.cpp)
+target_link_libraries(pql_order_trade_tests PRIVATE pql_domain gtest_main)
+add_test(NAME OrderTradeTest COMMAND pql_order_trade_tests)
+
+add_executable(pql_position_tests test_position.cpp)
+target_link_libraries(pql_position_tests PRIVATE pql_domain gtest_main)
+add_test(NAME PositionTest COMMAND pql_position_tests)
+
+add_executable(pql_portfolio_tests test_portfolio.cpp)
+target_link_libraries(pql_portfolio_tests PRIVATE pql_domain gtest_main)
+add_test(NAME PortfolioTest COMMAND pql_portfolio_tests)
