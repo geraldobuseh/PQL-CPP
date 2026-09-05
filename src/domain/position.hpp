@@ -6,7 +6,7 @@
 
 namespace pql {
 
-// Long-only weighted-average research accounting in one currency, before fees.
+// Long-only weighted-average research accounting in one currency.
 // Derived from caller-supplied unique fills; not a durable ledger or cash account.
 class Position {
    public:
@@ -15,6 +15,8 @@ class Position {
     // Returns new state; rejection never changes this position. Fill times must be
     // nondecreasing. Equal timestamps preserve the caller's replay order.
     [[nodiscard]] std::optional<Position> with_trade(const Trade& trade) const;
+    // Buy fees enter cost basis; sell fees reduce realized P&L. Negative fees reject.
+    [[nodiscard]] std::optional<Position> with_trade(const Trade& trade, Money fees) const;
 
     [[nodiscard]] const Symbol& symbol() const noexcept { return symbol_; }
     [[nodiscard]] Quantity quantity() const noexcept { return quantity_; }

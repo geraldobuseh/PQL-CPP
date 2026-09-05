@@ -26,11 +26,11 @@ static_assert(!std::is_default_constructible_v<PortfolioSnapshot>);
 static_assert(std::is_same_v<decltype(std::declval<PortfolioSnapshot&>().positions()),
                              const std::vector<Position>&>);
 static_assert(std::is_same_v<decltype(std::declval<PortfolioSnapshot&>().transactionHistory()),
-                             const std::vector<Trade>&>);
+                             const std::vector<Transaction>&>);
 static_assert(
     std::is_same_v<decltype(std::declval<Portfolio&>().positions()), const std::vector<Position>&>);
 static_assert(std::is_same_v<decltype(std::declval<Portfolio&>().transactionHistory()),
-                             const std::vector<Trade>&>);
+                             const std::vector<Transaction>&>);
 
 Trade fill(std::int64_t id, const char* symbol, OrderSide side, double quantity, double price,
            std::int64_t tick = 0) {
@@ -43,6 +43,11 @@ Trade fill(std::int64_t id, const char* symbol, OrderSide side, double quantity,
 
 Portfolio funded(double cash = 10000.0) {
     return Portfolio::create(PortfolioId::create(1).value(), Money::create(cash).value()).value();
+}
+
+Transaction record(const Trade& trade) {
+    return Transaction::create(PortfolioId::create(1).value(), trade, Money::create(0.0).value())
+        .value();
 }
 
 MarketPrice mark(const char* symbol, double price) {
@@ -79,7 +84,8 @@ TEST(PortfolioTest, BuysDebitCashAndRecordExecutedTransactions) {
     EXPECT_EQ(portfolio.positions()[0].symbol(), spy.symbol());
     EXPECT_DOUBLE_EQ(portfolio.positions()[0].quantity().value(), 10.0);
     EXPECT_DOUBLE_EQ(portfolio.positions()[1].quantity().value(), 20.0);
-    EXPECT_EQ(portfolio.transactionHistory(), (std::vector<Trade>{spy, apple}));
+    EXPECT_EQ(portfolio.transactionHistory(),
+              (std::vector<Transaction>{record(spy), record(apple)}));
     expect_amount(portfolio.marketValue({mark("SPY", 100.0), mark("AAPL", 50.0)}), 2000.0);
     expect_amount(portfolio.totalValue({mark("SPY", 100.0), mark("AAPL", 50.0)}), 10000.0);
 }
@@ -179,7 +185,7 @@ TEST(PortfolioTest, EnforcesGlobalChronologyButPreservesEqualTimeOrder) {
     const auto same_time = fill(2, "AAPL", OrderSide::Buy, 1.0, 50.0, 10);
     ASSERT_TRUE(portfolio.applyTrade(same_time));
     ASSERT_EQ(portfolio.transactionHistory().size(), 2U);
-    EXPECT_EQ(portfolio.transactionHistory()[1], same_time);
+    EXPECT_EQ(portfolio.transactionHistory()[1], record(same_time));
 }
 
 TEST(PortfolioTest, ReplayReconstructsCashPositionsAndHistoryExactly) {
@@ -198,14 +204,14 @@ TEST(PortfolioTest, ReplayReconstructsCashPositionsAndHistoryExactly) {
 }
 
 TEST(PortfolioTest, ReplayRejectsInconsistentHistoryWithoutRepair) {
-    const auto valid = fill(1, "SPY", OrderSide::Buy, 1.0, 100.0, 1);
+    const auto valid = record(fill(1, "SPY", OrderSide::Buy, 1.0, 100.0, 1));
     const auto id = PortfolioId::create(1).value();
     const auto cash = Money::create(10000.0).value();
     EXPECT_FALSE(Portfolio::replay(id, cash, {valid, valid}));
-    EXPECT_FALSE(
-        Portfolio::replay(id, cash, {valid, fill(2, "AAPL", OrderSide::Buy, 1.0, 50.0, 0)}));
-    EXPECT_FALSE(
-        Portfolio::replay(id, cash, {valid, fill(2, "SPY", OrderSide::Sell, 2.0, 100.0, 2)}));
+    EXPECT_FALSE(Portfolio::replay(id, cash,
+                                   {valid, record(fill(2, "AAPL", OrderSide::Buy, 1.0, 50.0, 0))}));
+    EXPECT_FALSE(Portfolio::replay(
+        id, cash, {valid, record(fill(2, "SPY", OrderSide::Sell, 2.0, 100.0, 2))}));
     EXPECT_FALSE(Portfolio::replay(id, Money::create(0.0).value(), {valid}));
     EXPECT_FALSE(Portfolio::replay(id, Money::create(-1.0).value(), {}));
 }

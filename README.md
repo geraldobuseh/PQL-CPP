@@ -13,6 +13,45 @@ A C++20 financial analysis system for testing investment edge through discipline
   - GCC 11+
   - Clang 14+
 
+### Local PostgreSQL
+
+Install/start Docker Desktop with Linux containers and Docker Compose. From the
+repository root, copy the environment template once:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Set `POSTGRES_PASSWORD` in `.env` to your own local password. Keep an existing `.env`
+when returning to the project; it is ignored by Git. Then start the database:
+
+```powershell
+docker compose config --quiet
+docker compose up -d --wait postgres
+docker compose ps
+docker compose exec postgres psql -U pql -d personal_quant_lab -c "SELECT current_database();"
+```
+
+Host applications connect to **127.0.0.1:5432**, database **personal_quant_lab**, user
+**pql**, using the password from `.env`. If port 5432 is occupied, change
+`POSTGRES_PORT` in `.env` and use that port in the application. No host PostgreSQL
+client installation is required for the query above.
+
+The single `postgres` service uses the official PostgreSQL 17 image, a TCP readiness
+check, and the `postgres_data` named volume. The image initializes the database and
+credentials only when the volume is empty; changing `.env` later does not change an
+existing database password. See the [official image documentation](https://hub.docker.com/_/postgres).
+
+To stop and remove the container while retaining the database volume:
+
+```powershell
+docker compose down
+```
+
+Starting with `docker compose up -d --wait postgres` reuses that volume. Do not add
+`--volumes` to the stop command if you want to retain data. This provisions the local
+database only; app schema, migrations and engine persistence are separate tickets.
+
 ### Build Instructions
 
 #### Configure the build:
@@ -139,6 +178,17 @@ Personal Quant Lab follows a disciplined design:
 This ticket (PQL-002) provides the foundation for all domain code in later tickets.
 
 ## Status
+
+### Database schema (PQL-010)
+
+The [C++ persistence layer](docs/persistence.md) provides libpqxx-backed repository
+interfaces and a disposable Docker integration-test runner (PQL-011).
+
+The v0.1 PostgreSQL migration defines the 11 domain tables and their constraints.
+See [migration and test commands](db/README.md) and the
+[column-by-column constraint rationale](db/schema.md). Transactions are append-only;
+positions and snapshots are rebuildable projections. The optional PQL-011
+persistence target implements repository access and ledger reconstruction.
 
 **v0.1 Bootstrap**: Minimal C++20 executable + GoogleTest integration
 

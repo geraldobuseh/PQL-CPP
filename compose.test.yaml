@@ -1,0 +1,17 @@
+services:
+  persistence_tests:
+    build:
+      context: .
+      dockerfile: test/postgres/Dockerfile
+    environment:
+      PGHOST: postgres
+      PGUSER: pql
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      PGDATABASE: pql_integration_test
+      PGCONNECT_TIMEOUT: "5"
+      PGOPTIONS: "-c lock_timeout=10000 -c statement_timeout=15000"
+    volumes:
+      - .:/workspace:ro
+    depends_on:
+      postgres:
+        condition: service_healthy

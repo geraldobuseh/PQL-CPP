@@ -84,13 +84,13 @@ std::optional<Portfolio> Portfolio::create(PortfolioId id, Money starting_cash) 
 }
 
 std::optional<Portfolio> Portfolio::replay(PortfolioId id, Money starting_cash,
-                                           const std::vector<Trade>& history) {
+                                           const std::vector<Transaction>& history) {
     auto portfolio = create(id, starting_cash);
     if (!portfolio) {
         return std::nullopt;
     }
-    for (const auto& trade : history) {
-        if (!portfolio->applyTrade(trade)) {
+    for (const auto& transaction : history) {
+        if (!portfolio->applyTransaction(transaction)) {
             return std::nullopt;
         }
     }
@@ -98,10 +98,19 @@ std::optional<Portfolio> Portfolio::replay(PortfolioId id, Money starting_cash,
 }
 
 bool Portfolio::applyTrade(const Trade& trade) {
+    const auto transaction = Transaction::create(id(), trade, *Money::create(0.0));
+    return transaction && applyTransaction(*transaction);
+}
+
+bool Portfolio::applyTransaction(const Transaction& transaction) {
+    if (transaction.portfolio_id() != id()) {
+        return false;
+    }
+    const auto& trade = transaction.trade();
     if ((!state_.history_.empty() && trade.timestamp() < state_.history_.back().timestamp()) ||
-        std::any_of(state_.history_.begin(), state_.history_.end(), [&](const Trade& previous) {
-            return previous.order_id() == trade.order_id();
-        })) {
+        std::any_of(
+            state_.history_.begin(), state_.history_.end(),
+            [&](const Transaction& previous) { return previous.order_id() == trade.order_id(); })) {
         return false;
     }
 
@@ -109,17 +118,36 @@ bool Portfolio::applyTrade(const Trade& trade) {
     if (!notional || notional->value() <= 0.0) {
         return false;
     }
-    auto next_cash = std::optional<Money>{};
+    // A sale can have zero or negative net proceeds when fees consume its value.
+    std::optional<Money> cash_change;
     if (trade.side() == OrderSide::Buy) {
-        if (notional->value() > state_.cash_.value()) {
+        const auto cost = add_amounts(*notional, transaction.fees());
+        if (!cost) {
             return false;
         }
-        next_cash = Money::create(state_.cash_.value() - notional->value());
+        cash_change = Money::create(-cost->value());
+    } else {
+        const double net = notional->value() - transaction.fees().value();
+        if ((transaction.fees().value() > 0.0 && net == notional->value()) ||
+            net == -transaction.fees().value()) {
+            return false;
+        }
+        cash_change = Money::create(net);
+    }
+    if (!cash_change) {
+        return false;
+    }
+    auto next_cash = std::optional<Money>{};
+    if (cash_change->value() < 0.0) {
+        if (-cash_change->value() > state_.cash_.value()) {
+            return false;
+        }
+        next_cash = Money::create(state_.cash_.value() + cash_change->value());
         if (!next_cash || next_cash->value() < 0.0 || next_cash == state_.cash_) {
             return false;
         }
     } else {
-        next_cash = add_amounts(state_.cash_, *notional);
+        next_cash = add_amounts(state_.cash_, *cash_change);
         if (!next_cash) {
             return false;
         }
@@ -130,7 +158,7 @@ bool Portfolio::applyTrade(const Trade& trade) {
                      [&](const Position& position) { return position.symbol() == trade.symbol(); });
     const auto next_position =
         (current == state_.positions_.end() ? Position::empty(trade.symbol()) : *current)
-            .with_trade(trade);
+            .with_trade(trade, transaction.fees());
     if (!next_position) {
         return false;
     }
@@ -144,7 +172,7 @@ bool Portfolio::applyTrade(const Trade& trade) {
         const auto index = static_cast<std::size_t>(current - state_.positions_.begin());
         candidate.positions_[index] = *next_position;
     }
-    candidate.history_.push_back(trade);
+    candidate.history_.push_back(transaction);
     candidate.cash_ = *next_cash;
     state_.swap(candidate);
     return true;
