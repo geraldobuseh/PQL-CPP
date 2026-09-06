@@ -2,13 +2,29 @@
 
 add_library(pql_domain STATIC
     domain/financial_types.cpp
+    domain/market_data.cpp
     domain/order.cpp
     domain/trade.cpp
     domain/position.cpp
     domain/portfolio.cpp
+    domain/transaction.cpp
 )
 target_include_directories(pql_domain PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_features(pql_domain PUBLIC cxx_std_20)
+add_library(pql_market_data STATIC market_data/fake_market_data_provider.cpp)
+target_link_libraries(pql_market_data PUBLIC pql_domain)
+target_compile_features(pql_market_data PUBLIC cxx_std_20)
+if(PQL_BUILD_PERSISTENCE)
+    add_subdirectory(persistence)
+endif()
+if(PQL_BUILD_REAL_MARKET_DATA)
+    add_library(pql_alpha_vantage STATIC market_data/alpha_vantage.cpp market_data/curl_http_transport.cpp)
+    target_link_libraries(pql_alpha_vantage PUBLIC pql_domain PRIVATE CURL::libcurl nlohmann_json::nlohmann_json)
+    if(PQL_BUILD_PERSISTENCE)
+        add_executable(pql_ingest_daily ingest_daily.cpp)
+        target_link_libraries(pql_ingest_daily PRIVATE pql_alpha_vantage pql_persistence nlohmann_json::nlohmann_json)
+    endif()
+endif()
 
 # Create the main executable
 add_executable(pql_app main.cpp)

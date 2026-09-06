@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "domain/position.hpp"
+#include "domain/transaction.hpp"
 
 namespace pql {
 
@@ -24,7 +25,9 @@ class PortfolioSnapshot {
     [[nodiscard]] Money startingCash() const noexcept { return starting_cash_; }
     [[nodiscard]] Money cashBalance() const noexcept { return cash_; }
     [[nodiscard]] const std::vector<Position>& positions() const noexcept { return positions_; }
-    [[nodiscard]] const std::vector<Trade>& transactionHistory() const noexcept { return history_; }
+    [[nodiscard]] const std::vector<Transaction>& transactionHistory() const noexcept {
+        return history_;
+    }
     [[nodiscard]] std::optional<Money> marketValue(const std::vector<MarketPrice>& marks) const;
     [[nodiscard]] std::optional<Money> totalValue(const std::vector<MarketPrice>& marks) const;
     bool operator==(const PortfolioSnapshot&) const = default;
@@ -38,19 +41,21 @@ class PortfolioSnapshot {
     Money starting_cash_;
     Money cash_;
     std::vector<Position> positions_;
-    std::vector<Trade> history_;
+    std::vector<Transaction> history_;
 };
 
 // Owned by trusted execution/orchestration. Never pass this authority to a strategy;
-// pass snapshot() instead. Only accepted Trade records can change financial state.
+// pass snapshot() instead. Only accepted Transaction records change financial state.
 class Portfolio {
    public:
     [[nodiscard]] static std::optional<Portfolio> create(PortfolioId id, Money starting_cash);
     [[nodiscard]] static std::optional<Portfolio> replay(PortfolioId id, Money starting_cash,
-                                                         const std::vector<Trade>& history);
+                                                         const std::vector<Transaction>& history);
 
     // False rejects without changing cash, positions or history. Allocation failures
     // may throw, also without changing state. OrderId is unique within this portfolio.
+    [[nodiscard]] bool applyTransaction(const Transaction& transaction);
+    // Compatibility adapter: an explicitly zero-fee fill, attributed to this portfolio.
     [[nodiscard]] bool applyTrade(const Trade& trade);
 
     [[nodiscard]] PortfolioSnapshot snapshot() const { return state_; }
@@ -60,7 +65,7 @@ class Portfolio {
     [[nodiscard]] const std::vector<Position>& positions() const noexcept {
         return state_.positions();
     }
-    [[nodiscard]] const std::vector<Trade>& transactionHistory() const noexcept {
+    [[nodiscard]] const std::vector<Transaction>& transactionHistory() const noexcept {
         return state_.transactionHistory();
     }
     [[nodiscard]] std::optional<Money> marketValue(const std::vector<MarketPrice>& marks) const {

@@ -1,5 +1,9 @@
 # 003: Cost basis, realized P&L and unrealized P&L
 
+PQL-008 follow-up: the original examples below use zero fees. Transactions now record
+explicit fees: buy fees enter average cost and sell fees reduce realized P&L. See
+`004-ledgers-and-event-sourcing.md` for the fee-bearing example and replay contract.
+
 ## What did I think before?
 
 A useful starting intuition to challenge is: "My purchase price is my cost, and a

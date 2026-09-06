@@ -12,7 +12,10 @@ using namespace pql;
 
 static_assert(!std::is_default_constructible_v<Position> && !std::is_aggregate_v<Position>);
 static_assert(!std::is_invocable_v<decltype(&Position::market_value), Position, double>);
-static_assert(!std::is_invocable_v<decltype(&Position::with_trade), Position, Order>);
+template <typename Type>
+concept AcceptsOrder =
+    requires(const Type& position, const Order& order) { position.with_trade(order); };
+static_assert(!AcceptsOrder<Position>);
 
 // All arguments in these fixtures are valid Order/Trade inputs. value() makes a
 // broken fixture fail the test rather than allowing an unchecked dereference.

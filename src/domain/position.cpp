@@ -64,7 +64,12 @@ std::optional<Money> Position::unrealized_pnl(Price mark) const {
 }
 
 std::optional<Position> Position::with_trade(const Trade& trade) const {
-    if (trade.symbol() != symbol_ || (last_trade_ && trade.timestamp() < *last_trade_)) {
+    return with_trade(trade, *Money::create(0.0));
+}
+
+std::optional<Position> Position::with_trade(const Trade& trade, Money fees) const {
+    if (fees.value() < 0.0 || trade.symbol() != symbol_ ||
+        (last_trade_ && trade.timestamp() < *last_trade_)) {
         return std::nullopt;
     }
 
@@ -80,6 +85,12 @@ std::optional<Position> Position::with_trade(const Trade& trade) const {
     auto next_realized = realized_pnl_;
 
     if (trade.side() == OrderSide::Buy) {
+        const double acquisition_cost = notional->value() + fees.value();
+        if (!std::isfinite(acquisition_cost) ||
+            (fees.value() > 0.0 && acquisition_cost <= notional->value()) ||
+            acquisition_cost <= fees.value()) {
+            return std::nullopt;
+        }
         next_quantity = owned + filled;
         // Reject a positive contribution lost in floating-point addition.
         if (!std::isfinite(next_quantity) || next_quantity <= owned ||
@@ -87,15 +98,19 @@ std::optional<Position> Position::with_trade(const Trade& trade) const {
             return std::nullopt;
         }
         if (!average_cost_) {
-            next_average = trade.price();
+            next_average = fees.value() == 0.0 ? std::optional<Price>{trade.price()}
+                                               : Price::create(acquisition_cost / next_quantity);
+            if (!next_average) {
+                return std::nullopt;
+            }
         } else {
             const auto basis = cost_basis();
             if (!basis) {
                 return std::nullopt;
             }
-            const double total_basis = basis->value() + notional->value();
+            const double total_basis = basis->value() + acquisition_cost;
             if (!std::isfinite(total_basis) || total_basis <= basis->value() ||
-                total_basis <= notional->value()) {
+                total_basis <= acquisition_cost) {
                 return std::nullopt;
             }
             next_average = Price::create(total_basis / next_quantity);
@@ -112,9 +127,14 @@ std::optional<Position> Position::with_trade(const Trade& trade) const {
         if (!profit) {
             return std::nullopt;
         }
-        const double total_realized = realized_pnl_.value() + profit->value();
-        if ((profit->value() != 0.0 && total_realized == realized_pnl_.value()) ||
-            (realized_pnl_.value() != 0.0 && total_realized == profit->value())) {
+        const double net_profit = profit->value() - fees.value();
+        if ((fees.value() > 0.0 && net_profit == profit->value()) ||
+            (profit->value() != 0.0 && net_profit == -fees.value())) {
+            return std::nullopt;
+        }
+        const double total_realized = realized_pnl_.value() + net_profit;
+        if ((net_profit != 0.0 && total_realized == realized_pnl_.value()) ||
+            (realized_pnl_.value() != 0.0 && total_realized == net_profit)) {
             return std::nullopt;
         }
         const auto realized = Money::create(total_realized);
