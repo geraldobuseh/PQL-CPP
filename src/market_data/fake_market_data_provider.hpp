@@ -21,7 +21,8 @@ class FakeMarketDataProvider final : public MarketDataProvider {
     // Last supplied close for the symbol, independent of history queries. This
     // does not advance a simulation clock or hide future fixture observations.
     [[nodiscard]] Price getLatestPrice(const Symbol& symbol) override;
-    [[nodiscard]] std::vector<PriceBar> getHistory(const Symbol& symbol, Date from, Date to) override;
+    [[nodiscard]] std::vector<PriceBar> getHistory(const Symbol& symbol, Date from,
+                                                   Date to) override;
 
    private:
     [[nodiscard]] const std::vector<PriceBar>& series(const Symbol& symbol) const;

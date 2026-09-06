@@ -13,8 +13,9 @@ static_assert(std::is_abstract_v<MarketDataProvider>);
 static_assert(std::has_virtual_destructor_v<MarketDataProvider>);
 static_assert(std::is_same_v<decltype(&MarketDataProvider::getLatestPrice),
                              Price (MarketDataProvider::*)(const Symbol&)>);
-static_assert(std::is_same_v<decltype(&MarketDataProvider::getHistory),
-                             std::vector<PriceBar> (MarketDataProvider::*)(const Symbol&, Date, Date)>);
+static_assert(
+    std::is_same_v<decltype(&MarketDataProvider::getHistory),
+                   std::vector<PriceBar> (MarketDataProvider::*)(const Symbol&, Date, Date)>);
 static_assert(!std::is_default_constructible_v<Date> && !std::is_aggregate_v<Date>);
 static_assert(!std::is_default_constructible_v<PriceBar> && !std::is_aggregate_v<PriceBar>);
 static_assert(!std::is_convertible_v<Timestamp, Date>);
@@ -23,8 +24,8 @@ Date date(int year, unsigned month, unsigned day) { return *Date::create(year, m
 const Symbol spy = *Symbol::create("SPY");
 Price price(double value) { return *Price::create(value); }
 PriceBar bar(Date day, double close) {
-    return *PriceBar::create(spy, day, price(close), price(close), price(close),
-                             price(close), *Quantity::create(0.5));
+    return *PriceBar::create(spy, day, price(close), price(close), price(close), price(close),
+                             *Quantity::create(0.5));
 }
 
 // Test-only implementation. Engine-facing consumer below knows only the abstract
@@ -47,6 +48,7 @@ class SyntheticProvider final : public MarketDataProvider {
         }
         return result;
     }
+
    private:
     Price latest_;
     bool& destroyed_;
@@ -75,13 +77,13 @@ TEST(MarketData, DatesValidateCalendarAndNarrowingBoundaries) {
         EXPECT_FALSE(Date::create(2026, 1, day));
     }
     EXPECT_LT(date(2025, 12, 31), date(2026, 1, 1));
-    EXPECT_EQ(date(2024, 2, 29).value(), (std::chrono::year{2024}/2/29));
+    EXPECT_EQ(date(2024, 2, 29).value(), (std::chrono::year{2024} / 2 / 29));
 }
 
 TEST(MarketData, BarsPreserveFieldsAndAllowZeroOrFractionalVolume) {
     for (double volume : {0.0, 0.125}) {
-        const auto item = PriceBar::create(spy, date(2026, 1, 2), price(100), price(120),
-                                          price(90), price(110), *Quantity::create(volume));
+        const auto item = PriceBar::create(spy, date(2026, 1, 2), price(100), price(120), price(90),
+                                           price(110), *Quantity::create(volume));
         ASSERT_TRUE(item);
         EXPECT_EQ(item->symbol(), spy);
         EXPECT_EQ(item->date(), date(2026, 1, 2));
@@ -91,14 +93,15 @@ TEST(MarketData, BarsPreserveFieldsAndAllowZeroOrFractionalVolume) {
         EXPECT_EQ(item->close(), price(110));
         EXPECT_EQ(item->volume(), *Quantity::create(volume));
     }
-    EXPECT_TRUE(PriceBar::create(spy, date(2026, 1, 2), price(1), price(1), price(1),
-                               price(1), *Quantity::create(0)));
+    EXPECT_TRUE(PriceBar::create(spy, date(2026, 1, 2), price(1), price(1), price(1), price(1),
+                                 *Quantity::create(0)));
 }
 
 TEST(MarketData, RejectsEachInvalidOhlcRelationship) {
     const auto day = date(2026, 1, 2);
     const auto volume = *Quantity::create(1);
-    EXPECT_FALSE(PriceBar::create(spy, day, price(100), price(120), price(110), price(115), volume));
+    EXPECT_FALSE(
+        PriceBar::create(spy, day, price(100), price(120), price(110), price(115), volume));
     EXPECT_FALSE(PriceBar::create(spy, day, price(130), price(120), price(90), price(110), volume));
     EXPECT_FALSE(PriceBar::create(spy, day, price(100), price(120), price(90), price(80), volume));
     EXPECT_FALSE(PriceBar::create(spy, day, price(100), price(120), price(90), price(130), volume));
@@ -109,8 +112,10 @@ TEST(MarketData, ConsumerUsesInterfaceAndVirtualDestruction) {
     bool first_destroyed = false;
     bool second_destroyed = false;
     {
-        std::unique_ptr<MarketDataProvider> first = std::make_unique<SyntheticProvider>(100, first_destroyed);
-        std::unique_ptr<MarketDataProvider> second = std::make_unique<SyntheticProvider>(200, second_destroyed);
+        std::unique_ptr<MarketDataProvider> first =
+            std::make_unique<SyntheticProvider>(100, first_destroyed);
+        std::unique_ptr<MarketDataProvider> second =
+            std::make_unique<SyntheticProvider>(200, second_destroyed);
         EXPECT_EQ(consumeLatest(*first, spy), price(100));
         EXPECT_EQ(consumeLatest(*second, spy), price(200));
     }

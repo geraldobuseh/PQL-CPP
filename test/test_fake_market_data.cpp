@@ -16,8 +16,8 @@ Symbol symbol(const char* value) { return *Symbol::create(value); }
 Date day(unsigned value) { return *Date::create(2026, 1, value); }
 Price price(double value) { return *Price::create(value); }
 PriceBar bar(const char* ticker, unsigned date, double close) {
-    return *PriceBar::create(symbol(ticker), day(date), price(close), price(close),
-                             price(close), price(close), *Quantity::create(100));
+    return *PriceBar::create(symbol(ticker), day(date), price(close), price(close), price(close),
+                             price(close), *Quantity::create(100));
 }
 
 TEST(FakeMarketData, OwnsFixturesAndReturnsIndependentRepeatableResults) {
@@ -42,8 +42,8 @@ TEST(FakeMarketData, OwnsFixturesAndReturnsIndependentRepeatableResults) {
 }
 
 TEST(FakeMarketData, InterleavedSymbolsRemainIndependentAndCaseSensitive) {
-    FakeMarketDataProvider fake({bar("AAPL", 2, 100), bar("SPY", 1, 500),
-                                 bar("AAPL", 5, 120), bar("SPY", 3, 510)});
+    FakeMarketDataProvider fake(
+        {bar("AAPL", 2, 100), bar("SPY", 1, 500), bar("AAPL", 5, 120), bar("SPY", 3, 510)});
     EXPECT_EQ(fake.getLatestPrice(symbol("AAPL")), price(120));
     EXPECT_EQ(fake.getLatestPrice(symbol("SPY")), price(510));
     EXPECT_EQ(fake.getHistory(symbol("SPY"), day(1), day(3)),
@@ -52,9 +52,13 @@ TEST(FakeMarketData, InterleavedSymbolsRemainIndependentAndCaseSensitive) {
 }
 
 TEST(FakeMarketData, RejectsDuplicateAndDecreasingDatesRatherThanRepairing) {
-    EXPECT_THROW((void)FakeMarketDataProvider({bar("AAPL", 2, 100), bar("AAPL", 2, 100)}), MarketDataError);
-    EXPECT_THROW((void)FakeMarketDataProvider({bar("AAPL", 2, 100), bar("SPY", 2, 500), bar("AAPL", 2, 110)}), MarketDataError);
-    EXPECT_THROW((void)FakeMarketDataProvider({bar("AAPL", 5, 120), bar("AAPL", 2, 100)}), MarketDataError);
+    EXPECT_THROW((void)FakeMarketDataProvider({bar("AAPL", 2, 100), bar("AAPL", 2, 100)}),
+                 MarketDataError);
+    EXPECT_THROW((void)FakeMarketDataProvider(
+                     {bar("AAPL", 2, 100), bar("SPY", 2, 500), bar("AAPL", 2, 110)}),
+                 MarketDataError);
+    EXPECT_THROW((void)FakeMarketDataProvider({bar("AAPL", 5, 120), bar("AAPL", 2, 100)}),
+                 MarketDataError);
 }
 
 TEST(FakeMarketData, DistinguishesUnknownSymbolsEmptyRangesAndInvalidRanges) {
@@ -69,8 +73,8 @@ TEST(FakeMarketData, DistinguishesUnknownSymbolsEmptyRangesAndInvalidRanges) {
 }
 
 TEST(FakeMarketData, EntireFeeAwarePortfolioLifecycleAndReplayAreDeterministic) {
-    FakeMarketDataProvider fake({bar("AAPL", 2, 100), bar("AAPL", 5, 120),
-                                 bar("AAPL", 6, 130), bar("AAPL", 7, 90)});
+    FakeMarketDataProvider fake(
+        {bar("AAPL", 2, 100), bar("AAPL", 5, 120), bar("AAPL", 6, 130), bar("AAPL", 7, 90)});
     MarketDataProvider& provider = fake;
     const auto asset = symbol("AAPL");
     const auto id = *PortfolioId::create(1);
@@ -87,11 +91,10 @@ TEST(FakeMarketData, EntireFeeAwarePortfolioLifecycleAndReplayAreDeterministic) 
         double value;
         double unrealized;
     };
-    const std::array steps{
-        Step{2, OrderSide::Buy, 2, 2, 798, 2, 101, 0, 998, -2},
-        Step{5, OrderSide::Buy, 2, 2, 556, 4, 111, 0, 1036, 36},
-        Step{6, OrderSide::Sell, 1, 1, 685, 3, 111, 18, 1075, 57},
-        Step{7, OrderSide::Sell, 3, 3, 952, 0, 0, -48, 952, 0}};
+    const std::array steps{Step{2, OrderSide::Buy, 2, 2, 798, 2, 101, 0, 998, -2},
+                           Step{5, OrderSide::Buy, 2, 2, 556, 4, 111, 0, 1036, 36},
+                           Step{6, OrderSide::Sell, 1, 1, 685, 3, 111, 18, 1075, 57},
+                           Step{7, OrderSide::Sell, 3, 3, 952, 0, 0, -48, 952, 0}};
     std::optional<PortfolioSnapshot> first_run;
     for (int run = 0; run < 2; ++run) {
         auto portfolio = Portfolio::create(id, capital);
@@ -104,8 +107,8 @@ TEST(FakeMarketData, EntireFeeAwarePortfolioLifecycleAndReplayAreDeterministic) 
             // Synthetic execution steps, not exchange close/availability times.
             // Orders are predetermined, not chosen using future fixture prices.
             const Timestamp time{Timestamp::Value{std::chrono::milliseconds{++sequence}}};
-            const auto request = Order::create_market(*OrderId::create(sequence), asset,
-                step.side, *Quantity::create(step.quantity), time);
+            const auto request = Order::create_market(*OrderId::create(sequence), asset, step.side,
+                                                      *Quantity::create(step.quantity), time);
             ASSERT_TRUE(request);
             const auto trade = Trade::create(*request, mark, time);
             ASSERT_TRUE(trade);
@@ -117,7 +120,8 @@ TEST(FakeMarketData, EntireFeeAwarePortfolioLifecycleAndReplayAreDeterministic) 
             ASSERT_EQ(snapshot.positions().size(), 1U);
             const auto& position = snapshot.positions().front();
             EXPECT_DOUBLE_EQ(position.quantity().value(), step.shares);
-            if (step.shares == 0) EXPECT_FALSE(position.average_cost());
+            if (step.shares == 0)
+                EXPECT_FALSE(position.average_cost());
             else {
                 ASSERT_TRUE(position.average_cost());
                 EXPECT_DOUBLE_EQ(position.average_cost()->value(), step.average);
@@ -134,8 +138,10 @@ TEST(FakeMarketData, EntireFeeAwarePortfolioLifecycleAndReplayAreDeterministic) 
         const auto replayed = Portfolio::replay(id, capital, portfolio->transactionHistory());
         ASSERT_TRUE(replayed);
         EXPECT_EQ(replayed->snapshot(), portfolio->snapshot());
-        if (first_run) EXPECT_EQ(portfolio->snapshot(), *first_run);
-        else first_run = portfolio->snapshot();
+        if (first_run)
+            EXPECT_EQ(portfolio->snapshot(), *first_run);
+        else
+            first_run = portfolio->snapshot();
     }
 }
 }  // namespace

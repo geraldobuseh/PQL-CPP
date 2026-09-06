@@ -21,8 +21,9 @@ class Date {
 // Validated construction preserves OHLC bounds throughout the value's lifetime.
 class PriceBar {
    public:
-    [[nodiscard]] static std::optional<PriceBar> create(const Symbol& symbol, Date date,
-        Price open, Price high, Price low, Price close, Quantity volume);
+    [[nodiscard]] static std::optional<PriceBar> create(const Symbol& symbol, Date date, Price open,
+                                                        Price high, Price low, Price close,
+                                                        Quantity volume);
     [[nodiscard]] const Symbol& symbol() const noexcept { return symbol_; }
     [[nodiscard]] Date date() const noexcept { return date_; }
     [[nodiscard]] Price open() const noexcept { return open_; }
@@ -33,8 +34,8 @@ class PriceBar {
     bool operator==(const PriceBar&) const = default;
 
    private:
-    PriceBar(const Symbol& symbol, Date date, Price open, Price high, Price low,
-             Price close, Quantity volume);
+    PriceBar(const Symbol& symbol, Date date, Price open, Price high, Price low, Price close,
+             Quantity volume);
     Symbol symbol_;
     Date date_;
     Price open_;

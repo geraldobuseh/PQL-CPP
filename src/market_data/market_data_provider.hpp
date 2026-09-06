@@ -28,7 +28,8 @@ class MarketDataProvider {
     // Empty means a successful query with no observations; unknown symbols,
     // incomplete retrieval and malformed data throw MarketDataError instead.
     // Adapters enforce this collection contract; the abstract API cannot do so.
-    [[nodiscard]] virtual std::vector<PriceBar> getHistory(const Symbol& symbol, Date from, Date to) = 0;
+    [[nodiscard]] virtual std::vector<PriceBar> getHistory(const Symbol& symbol, Date from,
+                                                           Date to) = 0;
 
     virtual ~MarketDataProvider() = default;
 };

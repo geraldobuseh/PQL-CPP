@@ -13,7 +13,7 @@ namespace pql::persistence {
 class PostgresUnitOfWork final : public TransactionRepository,
                                  public MarketPriceRepository,
                                  public PortfolioRepository {
- public:
+   public:
     // Empty connection string uses standard libpq PG* environment variables.
     explicit PostgresUnitOfWork(const std::string& connection = "");
     ~PostgresUnitOfWork() override;
@@ -26,15 +26,16 @@ class PostgresUnitOfWork final : public TransactionRepository,
     void addAsset(const Symbol& symbol, const std::string& name) override;
     void insertPrice(const PriceObservation& observation) override;
     [[nodiscard]] IngestionCounts storeDailyBars(const Symbol& symbol, const std::string& source,
-                                                const std::vector<PriceBar>& bars) override;
-    [[nodiscard]] std::optional<PriceObservation> price(
-        const Symbol& symbol, Timestamp time, const std::string& source, Adjustment adjustment) override;
-    [[nodiscard]] PortfolioId createPortfolio(
-        const std::string& name, PortfolioKind kind, Money starting_cash) override;
+                                                 const std::vector<PriceBar>& bars) override;
+    [[nodiscard]] std::optional<PriceObservation> price(const Symbol& symbol, Timestamp time,
+                                                        const std::string& source,
+                                                        Adjustment adjustment) override;
+    [[nodiscard]] PortfolioId createPortfolio(const std::string& name, PortfolioKind kind,
+                                              Money starting_cash) override;
     [[nodiscard]] std::optional<StoredPortfolio> portfolio(PortfolioId id) override;
     void renamePortfolio(PortfolioId id, const std::string& name) override;
 
- private:
+   private:
     struct Impl;
     std::unique_ptr<Impl> impl_;
 };
