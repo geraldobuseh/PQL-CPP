@@ -1,0 +1,19 @@
+services:
+  ingest:
+    build:
+      context: .
+      dockerfile: test/postgres/Dockerfile
+    entrypoint: ["sh", "/workspace/tools/run-ingestion.sh"]
+    environment:
+      PGHOST: postgres
+      PGUSER: pql
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      PGDATABASE: personal_quant_lab
+      PGCONNECT_TIMEOUT: "5"
+      PGOPTIONS: "-c lock_timeout=10000 -c statement_timeout=15000"
+      ALPHAVANTAGE_API_KEY: ${ALPHAVANTAGE_API_KEY:?Set ALPHAVANTAGE_API_KEY in .env}
+    volumes:
+      - .:/workspace:ro
+    depends_on:
+      postgres:
+        condition: service_healthy

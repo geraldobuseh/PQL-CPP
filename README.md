@@ -179,6 +179,14 @@ This ticket (PQL-002) provides the foundation for all domain code in later ticke
 
 ## Status
 
+The [Alpha Vantage integration](docs/real-market-data.md) ingests daily OHLCV for
+eight supported symbols with idempotent storage, bounded retries and JSON results (PQL-014).
+
+The [market-data provider interface](docs/market-data-provider.md) defines the
+provider-independent engine boundary and validated daily-bar types (PQL-012).
+The [fake provider and offline simulation](docs/fake-market-data.md) supply known
+prices for deterministic tests without networking (PQL-013).
+
 ### Database schema (PQL-010)
 
 The [C++ persistence layer](docs/persistence.md) provides libpqxx-backed repository

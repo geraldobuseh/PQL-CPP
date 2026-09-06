@@ -43,6 +43,11 @@ endif()
 enable_testing()
 
 # Add source subdirectories
+option(PQL_BUILD_REAL_MARKET_DATA "Build Alpha Vantage HTTP adapter" OFF)
+if(PQL_BUILD_REAL_MARKET_DATA)
+    find_package(CURL 7.85 REQUIRED)
+    find_package(nlohmann_json 3.11 CONFIG REQUIRED)
+endif()
 option(PQL_BUILD_PERSISTENCE "Build PostgreSQL repositories (requires libpqxx 7.10+)" OFF)
 option(PQL_BUILD_POSTGRES_TESTS "Build integration tests requiring an isolated migrated PostgreSQL database" OFF)
 if(PQL_BUILD_POSTGRES_TESTS AND NOT PQL_BUILD_PERSISTENCE)

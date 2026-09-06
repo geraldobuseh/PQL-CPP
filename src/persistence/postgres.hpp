@@ -25,6 +25,8 @@ class PostgresUnitOfWork final : public TransactionRepository,
     [[nodiscard]] std::vector<Transaction> transactions(PortfolioId id) override;
     void addAsset(const Symbol& symbol, const std::string& name) override;
     void insertPrice(const PriceObservation& observation) override;
+    [[nodiscard]] IngestionCounts storeDailyBars(const Symbol& symbol, const std::string& source,
+                                                const std::vector<PriceBar>& bars) override;
     [[nodiscard]] std::optional<PriceObservation> price(
         const Symbol& symbol, Timestamp time, const std::string& source, Adjustment adjustment) override;
     [[nodiscard]] PortfolioId createPortfolio(

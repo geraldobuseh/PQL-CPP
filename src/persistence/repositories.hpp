@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "domain/portfolio.hpp"
+#include "domain/market_data.hpp"
 
 namespace pql::persistence {
 
@@ -55,6 +56,11 @@ class MarketPriceRepository {
     virtual ~MarketPriceRepository() = default;
     virtual void addAsset(const Symbol& symbol, const std::string& name) = 0;
     virtual void insertPrice(const PriceObservation& observation) = 0;
+    struct IngestionCounts { std::size_t inserted; std::size_t unchanged; };
+    // Atomic within the owning unit of work. Identical retries are no-ops;
+    // conflicting revisions reject instead of overwriting existing observations.
+    [[nodiscard]] virtual IngestionCounts storeDailyBars(const Symbol& symbol,
+        const std::string& source, const std::vector<PriceBar>& bars) = 0;
     [[nodiscard]] virtual std::optional<PriceObservation> price(
         const Symbol& symbol, Timestamp time, const std::string& source, Adjustment adjustment) = 0;
 };

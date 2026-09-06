@@ -164,6 +164,16 @@ Wide UNIQUE covers fill facts for transaction references. Statement triggers rej
 
 ## Required future transactional writer rules
 
+### PQL-014 daily session identity
+
+`market_prices.session_date` is nullable for legacy timestamp observations. When
+present it must be a finite date in years1..9999 and agree with observed_at at UTC
+midnight; without this constraint, the same daily bar could have contradictory
+date/time identities. A partial UNIQUE index on asset/session_date/source/adjustment
+prevents duplicate daily records. Source alphavantage.daily additionally requires a
+session date and raw adjustment, preventing an incomplete or mislabeled daily row.
+These are session keys, not exchange close or availability timestamps.
+
 PQL-011 now implements portfolio locking, sequence allocation, replay validation,
 and atomic order/execution/transaction writes for manual simulated fills. See
 [the persistence contract](../docs/persistence.md). Projection writes, strategy-run

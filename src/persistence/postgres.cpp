@@ -244,4 +244,40 @@ std::optional<PriceObservation> PostgresUnitOfWork::price(const Symbol& symbol, 
         return PriceObservation{symbol,time,source,adjustment,*open,*high,*low,*close,*volume};
     });
 }
+MarketPriceRepository::IngestionCounts PostgresUnitOfWork::storeDailyBars(
+    const Symbol& symbol,const std::string& source,const std::vector<PriceBar>& bars) {
+    return impl_->run([&] {
+        textValue(source);
+        if(source.find_first_not_of(" \t\r\n")==std::string::npos) invalid();
+        std::optional<Date> previous;
+        for(const auto& bar:bars) {
+            if(bar.symbol()!=symbol || (previous && bar.date()<=*previous)) invalid();
+            previous=bar.date();
+        }
+        impl_->tx.exec("INSERT INTO assets(symbol,name,currency) VALUES($1::text,$1::text,'USD') ON CONFLICT(symbol) DO NOTHING",pqxx::params{symbol.value()});
+        const auto asset=impl_->tx.exec("SELECT asset_id,currency FROM assets WHERE symbol=$1 FOR UPDATE",pqxx::params{symbol.value()})[0];
+        if(asset[1].as<std::string>()!="USD") invalid();
+        const auto asset_id=asset[0].as<std::int64_t>();
+        IngestionCounts counts{0,0};
+        for(const auto& bar:bars) {
+            const auto days=std::chrono::sys_days{bar.date().value()}.time_since_epoch().count();
+            const pqxx::params values{asset_id,days,source,decimal(bar.open().value()),decimal(bar.high().value()),
+                decimal(bar.low().value()),decimal(bar.close().value()),decimal(bar.volume().value())};
+            const auto inserted=impl_->tx.exec(R"SQL(
+                INSERT INTO market_prices(asset_id,observed_at,source,adjustment,open,high,low,close,volume,session_date)
+                VALUES($1,TIMESTAMPTZ 'epoch'+$2::integer*INTERVAL '1 day',$3,'raw',$4,$5,$6,$7,$8,DATE '1970-01-01'+$2::integer)
+                ON CONFLICT DO NOTHING RETURNING asset_id
+            )SQL",values);
+            if(!inserted.empty()) { ++counts.inserted; continue; }
+            const auto identical=impl_->tx.exec(R"SQL(
+                SELECT 1 FROM market_prices WHERE asset_id=$1 AND session_date=DATE '1970-01-01'+$2::integer
+                AND source=$3 AND adjustment='raw' AND open=$4::numeric AND high=$5::numeric
+                AND low=$6::numeric AND close=$7::numeric AND volume=$8::numeric
+            )SQL",values);
+            if(identical.empty()) throw PersistenceError("Conflicting daily market-data revision; batch rejected");
+            ++counts.unchanged;
+        }
+        return counts;
+    });
+}
 }  // namespace pql::persistence
