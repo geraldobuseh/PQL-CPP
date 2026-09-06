@@ -27,7 +27,7 @@ Personal Quant Lab uses five specialized agents with distinct roles and mandates
               +----------+----------+
                          |
                          v
-                       YOU
+                       ME (GERALD)
                  merge / reject / iterate
 ```
 
